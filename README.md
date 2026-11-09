@@ -12,6 +12,7 @@ Memory Compiler is a private video archive with natural-language retrieval. User
 - **Phase 5 (Temporal Video-Window Retrieval & Comparative Evaluation):** Complete
 - **Phase 6 (Event Reasoning & Constrained Temporal Query Engine):** Complete
 - **Phase 7 (Hardening, Cascading Deletion & Demo Seeding):** Complete
+- **Phase 8 (React + Vite + TypeScript Frontend UI):** Complete
 
 ## Technology Stack
 
@@ -100,7 +101,16 @@ uvicorn app.main:app --reload --port 8000
 - Health Liveness: `http://localhost:8000/health/live`
 - Health Readiness: `http://localhost:8000/health/ready`
 
-### 6. Start Services with Docker Compose
+### 8. Start Frontend UI
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- User Interface: `http://localhost:3000` (proxies `/api` calls to FastAPI backend on port 8000)
+- Production Build: `npm run build`
+
+### 9. Start Services with Docker Compose
 ```bash
 docker compose up -d
 ```
