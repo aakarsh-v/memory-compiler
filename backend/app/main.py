@@ -9,6 +9,8 @@ from app.core.logging import setup_logging, logger
 from app.core.errors import AppException, app_exception_handler, generic_exception_handler
 from app.api.v1.health import router as health_router
 from app.api.v1.videos import router as videos_router
+from app.api.v1.search import router as search_router
+from app.api.v1.frames import router as frames_router
 
 setup_logging(settings.LOG_LEVEL)
 
@@ -54,3 +56,5 @@ app.add_exception_handler(Exception, generic_exception_handler)
 # Routers
 app.include_router(health_router)
 app.include_router(videos_router)
+app.include_router(search_router)
+app.include_router(frames_router)

@@ -1,6 +1,9 @@
+import os
+import re
 import shutil
 from typing import Optional
-from fastapi import APIRouter, Depends, UploadFile, File, Query, status
+from fastapi import APIRouter, Depends, UploadFile, File, Query, Header, Response, status
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
@@ -118,3 +121,74 @@ def get_video_status(
     if not video:
         raise NotFoundException("VIDEO_NOT_FOUND", f"Video '{video_id}' not found")
     return VideoStatusResponse.from_video(video)
+
+
+@router.get("/{video_id}/stream")
+def stream_video(
+    video_id: str,
+    range: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+    storage: LocalStorageService = Depends(get_storage_service),
+    owner_id: str = Depends(get_current_user_id)
+) -> Response:
+    """
+    Streams private original media with HTTP Range (206 Partial Content) support,
+    allowing direct player seeking to evidence timestamps.
+    """
+    video = db.query(Video).filter(Video.id == video_id, Video.owner_id == owner_id).first()
+    if not video:
+        raise NotFoundException("VIDEO_NOT_FOUND", f"Video '{video_id}' not found")
+
+    file_path = storage.get_path(video.storage_key)
+    file_size = os.path.getsize(file_path)
+
+    if not range:
+        return FileResponse(
+            path=file_path,
+            media_type=video.mime_type or "video/mp4",
+            headers={"Accept-Ranges": "bytes"}
+        )
+
+    # Parse Range: bytes=start-end
+    range_match = re.match(r"^bytes=(\d+)-(\d+)?$", range.strip())
+    if not range_match:
+        return Response(
+            status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
+            headers={"Content-Range": f"bytes */{file_size}"}
+        )
+
+    start = int(range_match.group(1))
+    end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+
+    if start >= file_size or end >= file_size or start > end:
+        return Response(
+            status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
+            headers={"Content-Range": f"bytes */{file_size}"}
+        )
+
+    chunk_size = end - start + 1
+
+    def iter_file():
+        with open(file_path, "rb") as f:
+            f.seek(start)
+            remaining = chunk_size
+            while remaining > 0:
+                bytes_to_read = min(65536, remaining)
+                data = f.read(bytes_to_read)
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+
+    headers = {
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(chunk_size),
+        "Content-Type": video.mime_type or "video/mp4"
+    }
+
+    return StreamingResponse(
+        iter_file(),
+        status_code=status.HTTP_206_PARTIAL_CONTENT,
+        headers=headers
+    )

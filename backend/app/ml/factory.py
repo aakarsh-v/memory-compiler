@@ -11,5 +11,13 @@ def get_embedding_provider() -> EmbeddingProvider:
             model_id=settings.EMBEDDING_MODEL_ID,
             dimension=settings.VECTOR_DIMENSION
         )
-    raise ValueError(f"Unsupported EMBEDDING_PROVIDER: '{provider}'. Only 'mock' is currently supported without GPU/heavy weights.")
+    elif provider == "openclip":
+        from app.ml.openclip import OpenCLIPEmbeddingProvider
+        return OpenCLIPEmbeddingProvider(
+            model_id=settings.EMBEDDING_MODEL_ID,
+            device=settings.EMBEDDING_DEVICE
+        )
+    raise ValueError(
+        f"Unsupported EMBEDDING_PROVIDER: '{provider}'. Supported options: 'mock', 'openclip'"
+    )
 

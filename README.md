@@ -7,6 +7,7 @@ Memory Compiler is a private video archive with natural-language retrieval. User
 - **Phase 0 (Repository Assessment & Scaffolding):** Complete
 - **Phase 1 (Upload, Private Storage & Processing State):** Complete
 - **Phase 2 (Frames and Metadata Extraction Pipeline):** Complete
+- **Phase 3 (Multimodal Frame Embedding Search & Playback):** Complete
 
 ## Technology Stack
 
@@ -98,3 +99,6 @@ docker compose up -d
 | `GET` | `/api/v1/videos` | List owned videos (paginated via cursor) | `200 OK` |
 | `GET` | `/api/v1/videos/{id}` | Video metadata and state | `200 OK` |
 | `GET` | `/api/v1/videos/{id}/status` | Stage, progress, and safe error summary | `200 OK` |
+| `POST` | `/api/v1/search` | Natural-language top-K semantic search | `200 OK` |
+| `GET` | `/api/v1/videos/{id}/stream` | Range-seeking private video streaming | `200 OK` / `206 Partial Content` |
+| `GET` | `/api/v1/frames/{id}/thumbnail` | Frame thumbnail preview image | `200 OK` (`image/jpeg`) |

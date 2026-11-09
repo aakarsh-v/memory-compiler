@@ -108,3 +108,57 @@ No stack traces, internal paths, or secrets are exposed in API responses.
 `GET /api/v1/videos/{video_id}`
 - Header: `X-User-ID: <owner_id>`
 - Response: `200 OK` (returns full metadata)
+
+### 7. Natural-Language Semantic Search
+`POST /api/v1/search`
+- Header: `X-User-ID: <owner_id>`
+- Content-Type: `application/json`
+- Request:
+```json
+{
+  "query": "person walking in hallway",
+  "video_ids": null,
+  "limit": 10,
+  "threshold": 0.0,
+  "include_evidence": true
+}
+```
+- Response: `200 OK`
+```json
+{
+  "query": "person walking in hallway",
+  "search_mode": "frame_semantic_v1",
+  "results": [
+    {
+      "video_id": "670fbc02-09c3-4d6f-871d-f8ec008c2b74",
+      "filename": "sample_clip.mp4",
+      "start_seconds": 1.0,
+      "end_seconds": 3.0,
+      "evidence_timestamp_seconds": 2.0,
+      "thumbnail_url": "/api/v1/frames/8d05e263-d022-44df-9118-2e061ff635c0/thumbnail",
+      "description": "Visually similar frame candidate",
+      "score": 0.8245,
+      "score_type": "cosine_similarity",
+      "applied_constraints": [],
+      "evidence": [
+        {
+          "frame_id": "8d05e263-d022-44df-9118-2e061ff635c0",
+          "timestamp_seconds": 2.0
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 8. Video Stream & Range Seeking
+`GET /api/v1/videos/{video_id}/stream`
+- Header: `X-User-ID: <owner_id>`
+- Header: `Range: bytes=0-1048576` (optional)
+- Response: `206 Partial Content` (with `Content-Range`) or `200 OK`
+- Supports video timeline seeking to `evidence_timestamp_seconds`.
+
+### 9. Frame Thumbnail Preview
+`GET /api/v1/frames/{frame_id}/thumbnail`
+- Header: `X-User-ID: <owner_id>`
+- Response: `200 OK` (`image/jpeg`)

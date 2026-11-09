@@ -11,6 +11,7 @@ from app.db.models import Video, ProcessingJob, Frame
 from app.storage.local import LocalStorageService
 from app.pipeline.probing import probe_video, VideoMetadata
 from app.pipeline.extraction import extract_frames, ExtractedFrame
+from app.ml.factory import get_embedding_provider
 
 
 def utc_now() -> datetime:
@@ -87,13 +88,41 @@ class VideoPipelineProcessor:
                 sample_interval=settings.FRAME_SAMPLE_SECONDS
             )
 
-            # 3. Persist extracted frames into private storage and DB (idempotently)
-            # Remove any existing frames for this video to ensure retry-safety without duplicates
+            # 3. Transition: EMBEDDING_FRAMES
+            video.status = "EMBEDDING_FRAMES"
+            video.current_stage = "EMBEDDING_FRAMES"
+            video.progress = 0.6
+            job.stage = "EMBEDDING_FRAMES"
+            job.progress = 0.6
+            self.db.commit()
+
+            # Retrieve configured embedding provider
+            embedding_provider = get_embedding_provider()
+
+            # Batch frames for inference
+            batch_size = max(1, settings.EMBEDDING_BATCH_SIZE)
+            frame_image_paths = [f.image_path for f in extracted_frames]
+            all_embeddings: List[List[float]] = []
+
+            for i in range(0, len(frame_image_paths), batch_size):
+                batch_paths = frame_image_paths[i : i + batch_size]
+                batch_vectors = embedding_provider.embed_frames(batch_paths)
+                all_embeddings.extend(batch_vectors)
+
+            # 4. Transition: PERSISTING_INDEX
+            video.status = "PERSISTING_INDEX"
+            video.current_stage = "PERSISTING_INDEX"
+            video.progress = 0.8
+            job.stage = "PERSISTING_INDEX"
+            job.progress = 0.8
+            self.db.commit()
+
+            # Clean any existing frames for idempotency
             self.db.query(Frame).filter(Frame.video_id == video_id).delete()
             self.db.commit()
 
             frame_records: List[Frame] = []
-            for frame in extracted_frames:
+            for frame, embedding_vec in zip(extracted_frames, all_embeddings):
                 # Deterministic key: {owner_id}/frames/{video_id}/frame_{timestamp_ms:010d}.jpg
                 ts_ms = int(round(frame.timestamp_seconds * 1000))
                 frame_key = f"{video.owner_id}/frames/{video.id}/frame_{ts_ms:010d}.jpg"
@@ -109,15 +138,15 @@ class VideoPipelineProcessor:
                     image_key=frame_key,
                     width=frame.width,
                     height=frame.height,
-                    embedding=None,  # Generated in Phase 3
-                    embedding_model=settings.EMBEDDING_MODEL_ID,
+                    embedding=embedding_vec,
+                    embedding_model=embedding_provider.model_id,
                     preprocessing_version="v1"
                 )
                 frame_records.append(frame_row)
 
             self.db.add_all(frame_records)
 
-            # 4. Finalize Phase 2 (marked READY until Phase 3 adds vector indexing)
+            # 5. Finalize READY
             video.status = "READY"
             video.current_stage = "COMPLETED"
             video.progress = 1.0
@@ -134,7 +163,7 @@ class VideoPipelineProcessor:
             self.db.refresh(video)
 
             logger.info(
-                f"Video {video_id} processed successfully ({len(frame_records)} frames extracted)",
+                f"Video {video_id} processed and indexed successfully ({len(frame_records)} frames with embeddings)",
                 extra={"video_id": video_id, "job_id": job.id, "stage": "COMPLETED"}
             )
             return video
