@@ -133,3 +133,4 @@ def test_full_lifecycle_and_clean_deletion(e2e_env):
     # Verify frame image directory is clean
     frame_files_left = list((tmp_path / "media" / "alice" / "frames" / video_id).glob("*.jpg")) if (tmp_path / "media" / "alice" / "frames" / video_id).exists() else []
     assert len(frame_files_left) == 0
+

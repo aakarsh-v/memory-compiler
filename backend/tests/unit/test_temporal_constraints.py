@@ -179,3 +179,4 @@ def test_extremum_first_and_last():
     assert len(last_res) == 1
     assert last_res[0].start_seconds == 7.0
     assert "last" in last_res[0].applied_constraints[0]
+

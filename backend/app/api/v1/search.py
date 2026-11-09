@@ -23,3 +23,4 @@ def search_videos(
     provider = get_embedding_provider()
     search_service = SearchService(db, provider)
     return search_service.search(request, owner_id)
+

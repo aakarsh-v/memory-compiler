@@ -23,3 +23,4 @@ def test_search_rejects_empty_query():
     with pytest.raises(ValidationException) as exc:
         service.search(SearchRequest(query="   "), owner_id="user1")
     assert exc.value.code == "SEARCH_EMPTY_QUERY"
+

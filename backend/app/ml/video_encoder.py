@@ -38,3 +38,4 @@ class VideoWindowEncoder:
         if norm == 0.0:
             norm = 1.0
         return [x / norm for x in pooled]
+

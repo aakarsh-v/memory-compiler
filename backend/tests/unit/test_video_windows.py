@@ -33,3 +33,4 @@ def test_video_window_encoder_pooling():
     # Unit normalized
     norm = sum(x * x for x in pooled_vec)
     assert abs(norm - 1.0) < 1e-5
+

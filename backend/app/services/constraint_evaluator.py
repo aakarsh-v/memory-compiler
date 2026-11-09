@@ -112,3 +112,4 @@ class TemporalConstraintEvaluator:
 
         valid_pairs.sort(key=lambda x: x.score, reverse=True)
         return valid_pairs
+

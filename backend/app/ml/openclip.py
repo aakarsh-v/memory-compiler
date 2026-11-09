@@ -75,3 +75,4 @@ class OpenCLIPEmbeddingProvider(EmbeddingProvider):
             # L2 normalize
             image_features /= image_features.norm(dim=-1, keepdim=True)
             return image_features.cpu().numpy().tolist()
+

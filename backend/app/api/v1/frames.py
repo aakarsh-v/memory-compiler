@@ -42,3 +42,4 @@ def get_frame_thumbnail(
         media_type="image/jpeg",
         filename=f"frame_{frame_id}.jpg"
     )
+

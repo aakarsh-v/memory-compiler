@@ -90,3 +90,4 @@ class TemporalQueryParser:
             constraints=[],
             has_constraints=False
         )
+

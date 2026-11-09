@@ -123,3 +123,4 @@ def test_search_ownership_isolation(search_test_env):
     assert response.status_code == 200
     data = response.json()
     assert len(data["results"]) == 0
+

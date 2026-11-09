@@ -39,3 +39,4 @@ def generate_sliding_windows(
         current_start += stride
 
     return windows
+

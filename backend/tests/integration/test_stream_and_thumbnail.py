@@ -129,3 +129,4 @@ def test_thumbnail_ownership_isolation(stream_test_env):
         headers={"X-User-ID": "bob"}
     )
     assert response.status_code == 404
+
