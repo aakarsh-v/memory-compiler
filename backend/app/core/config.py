@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/memory_compiler"
     REDIS_URL: str = "redis://localhost:6379/0"
+    ENABLE_ASYNC_WORKER: bool = False
     MEDIA_ROOT: Path = Path("data/media")
     MAX_UPLOAD_MB: int = 500
     ALLOWED_VIDEO_EXTENSIONS: List[str] = [".mp4", ".mov", ".mkv", ".webm", ".avi"]

@@ -6,6 +6,7 @@ Memory Compiler is a private video archive with natural-language retrieval. User
 
 - **Phase 0 (Repository Assessment & Scaffolding):** Complete
 - **Phase 1 (Upload, Private Storage & Processing State):** Complete
+- **Phase 2 (Frames and Metadata Extraction Pipeline):** Complete
 
 ## Technology Stack
 
