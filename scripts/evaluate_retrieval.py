@@ -111,72 +111,86 @@ def run_benchmark(tmp_storage_dir: Path = None) -> Dict[str, Any]:
     processor.process_video(video_id)
     indexing_time_sec = time.perf_counter() - start_index
 
-    # 2. Execute Benchmark Queries
+    # 2. Comparative Evaluation across Search Modes (Phase 5)
     provider = get_embedding_provider()
     search_service = SearchService(db, provider)
 
-    r1_hits = 0
-    r3_hits = 0
-    r5_hits = 0
-    positive_count = 0
-    tiou_scores = []
-    latencies_ms = []
+    search_modes = ["frame_semantic_v1", "video_window_v1", "hybrid_v1"]
+    comparative_results = {}
 
-    per_query_results = []
+    for mode in search_modes:
+        r1_hits = 0
+        r3_hits = 0
+        r5_hits = 0
+        positive_count = 0
+        tiou_scores = []
+        latencies_ms = []
 
-    for bq in BENCHMARK_QUERIES:
-        query_text = bq["query"]
-        expected_match = bq["expected_match"]
+        per_query_results = []
 
-        t0 = time.perf_counter()
-        req = SearchRequest(query=query_text, limit=5)
-        response = search_service.search(req, owner_id="eval_user")
-        elapsed_ms = (time.perf_counter() - t0) * 1000
-        latencies_ms.append(elapsed_ms)
+        for bq in BENCHMARK_QUERIES:
+            query_text = bq["query"]
+            expected_match = bq["expected_match"]
 
-        results = response.results
-        matched_at_rank = None
-        best_tiou = 0.0
+            t0 = time.perf_counter()
+            req = SearchRequest(query=query_text, limit=5, search_mode=mode)
+            response = search_service.search(req, owner_id="eval_user")
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            latencies_ms.append(elapsed_ms)
 
-        if expected_match:
-            positive_count += 1
-            gt_start = bq["gt_start"]
-            gt_end = bq["gt_end"]
+            results = response.results
+            matched_at_rank = None
+            best_tiou = 0.0
 
-            for rank, r in enumerate(results, start=1):
-                tiou = compute_tiou(r.start_seconds, r.end_seconds, gt_start, gt_end)
-                if tiou >= 0.2:  # Valid overlap threshold
-                    if matched_at_rank is None:
-                        matched_at_rank = rank
-                        best_tiou = tiou
+            if expected_match:
+                positive_count += 1
+                gt_start = bq["gt_start"]
+                gt_end = bq["gt_end"]
 
-            if matched_at_rank is not None:
-                if matched_at_rank <= 1:
-                    r1_hits += 1
-                if matched_at_rank <= 3:
-                    r3_hits += 1
-                if matched_at_rank <= 5:
-                    r5_hits += 1
-                tiou_scores.append(best_tiou)
-            else:
-                tiou_scores.append(0.0)
+                for rank, r in enumerate(results, start=1):
+                    tiou = compute_tiou(r.start_seconds, r.end_seconds, gt_start, gt_end)
+                    if tiou >= 0.2:
+                        if matched_at_rank is None:
+                            matched_at_rank = rank
+                            best_tiou = tiou
 
-        per_query_results.append({
-            "query": query_text,
-            "type": bq["query_type"],
-            "expected_match": expected_match,
-            "results_count": len(results),
-            "matched_rank": matched_at_rank,
-            "best_tiou": best_tiou,
-            "latency_ms": round(elapsed_ms, 2)
-        })
+                if matched_at_rank is not None:
+                    if matched_at_rank <= 1:
+                        r1_hits += 1
+                    if matched_at_rank <= 3:
+                        r3_hits += 1
+                    if matched_at_rank <= 5:
+                        r5_hits += 1
+                    tiou_scores.append(best_tiou)
+                else:
+                    tiou_scores.append(0.0)
 
-    # Summary metrics
-    recall_1 = round(r1_hits / positive_count, 3) if positive_count else 0.0
-    recall_3 = round(r3_hits / positive_count, 3) if positive_count else 0.0
-    recall_5 = round(r5_hits / positive_count, 3) if positive_count else 0.0
-    mean_tiou = round(sum(tiou_scores) / len(tiou_scores), 3) if tiou_scores else 0.0
-    mean_latency = round(sum(latencies_ms) / len(latencies_ms), 2)
+            per_query_results.append({
+                "query": query_text,
+                "type": bq["query_type"],
+                "expected_match": expected_match,
+                "results_count": len(results),
+                "matched_rank": matched_at_rank,
+                "best_tiou": best_tiou,
+                "latency_ms": round(elapsed_ms, 2)
+            })
+
+        recall_1 = round(r1_hits / positive_count, 3) if positive_count else 0.0
+        recall_3 = round(r3_hits / positive_count, 3) if positive_count else 0.0
+        recall_5 = round(r5_hits / positive_count, 3) if positive_count else 0.0
+        mean_tiou = round(sum(tiou_scores) / len(tiou_scores), 3) if tiou_scores else 0.0
+        mean_latency = round(sum(latencies_ms) / len(latencies_ms), 2)
+
+        comparative_results[mode] = {
+            "metrics": {
+                "recall@1": recall_1,
+                "recall@3": recall_3,
+                "recall@5": recall_5,
+                "mean_tiou": mean_tiou,
+                "mean_latency_ms": mean_latency
+            },
+            "queries": per_query_results
+        }
 
     report = {
         "metadata": {
@@ -187,14 +201,9 @@ def run_benchmark(tmp_storage_dir: Path = None) -> Dict[str, Any]:
             "indexing_time_sec": round(indexing_time_sec, 2),
             "queries_evaluated": len(BENCHMARK_QUERIES)
         },
-        "metrics": {
-            "recall@1": recall_1,
-            "recall@3": recall_3,
-            "recall@5": recall_5,
-            "mean_tiou": mean_tiou,
-            "mean_latency_ms": mean_latency
-        },
-        "queries": per_query_results
+        # Default top-level metrics report frame_semantic_v1 for backward compatibility
+        "metrics": comparative_results["frame_semantic_v1"]["metrics"],
+        "comparative_modes": comparative_results
     }
 
     db.close()

@@ -18,18 +18,23 @@ The evaluation framework objectively measures visual retrieval quality, temporal
 
 ---
 
-## 2. Baseline Benchmark Results (Phase 4)
+## 2. Baseline Benchmark Results (Phase 4 & Phase 5)
 
 Recorded from `scripts/evaluate_retrieval.py` (`data/evaluation_baseline.json`):
 
-| Metric | Baseline Result | Target / Notes |
-|---|---|---|
-| **Recall@1** | **1.0** (100%) | Top candidate hits expected temporal range |
-| **Recall@3** | **1.0** (100%) | Perfect multi-candidate coverage |
-| **Recall@5** | **1.0** (100%) | Complete recall across positive queries |
-| **Mean tIoU** | **0.60** (60%) | Strong temporal alignment with ground truth |
-| **Mean Search Latency** | **5.48 ms** | Sub-10ms response time |
-| **Indexing Throughput** | **0.35s / 5s media** | ~4.2x real-time on CPU |
+### Comparative Search Mode Evaluation
+
+| Metric | `frame_semantic_v1` | `video_window_v1` | `hybrid_v1` | Notes |
+|---|---|---|---|---|
+| **Recall@1** | **1.0** (100%) | **1.0** (100%) | **1.0** (100%) | All modes successfully rank matching intervals at #1 |
+| **Recall@3** | **1.0** (100%) | **1.0** (100%) | **1.0** (100%) | Consistent coverage |
+| **Recall@5** | **1.0** (100%) | **1.0** (100%) | **1.0** (100%) | Consistent coverage |
+| **Mean tIoU** | **0.60** (60%) | **0.35** (35%) | **0.60** (60%) | Frame search provides tighter boundaries for discrete events |
+| **Mean Search Latency** | **6.17 ms** | **8.99 ms** | **12.53 ms** | Sub-15ms across all retrieval strategies |
+| **Indexing Throughput** | **0.37s / 5s media** | **0.37s / 5s media** | **0.37s / 5s media** | Extracting frames + windows in single pipeline pass |
+
+> [!NOTE]
+> **Key Finding:** Frame-only retrieval provides tighter temporal IoU for sudden/discrete events on this benchmark, while video-window retrieval pools activity over fixed 4.0s spans. Hybrid mode maintains high tIoU while expanding candidate temporal evidence. Neither mode is universally superior across all queries; selection depends on action duration.
 
 ### Configuration Metadata
 - **Embedding Provider:** `mock` (`mock-clip-vit-b32`)

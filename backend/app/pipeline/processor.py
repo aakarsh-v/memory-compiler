@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logging import logger
 from app.core.errors import AppException
-from app.db.models import Video, ProcessingJob, Frame
+from app.db.models import Video, ProcessingJob, Frame, VideoWindow
 from app.storage.local import LocalStorageService
 from app.pipeline.probing import probe_video, VideoMetadata
 from app.pipeline.extraction import extract_frames, ExtractedFrame
+from app.pipeline.windows import generate_sliding_windows
+from app.ml.video_encoder import VideoWindowEncoder
 from app.ml.factory import get_embedding_provider
 
 
@@ -117,8 +119,9 @@ class VideoPipelineProcessor:
             job.progress = 0.8
             self.db.commit()
 
-            # Clean any existing frames for idempotency
+            # Clean any existing frames & windows for idempotency
             self.db.query(Frame).filter(Frame.video_id == video_id).delete()
+            self.db.query(VideoWindow).filter(VideoWindow.video_id == video_id).delete()
             self.db.commit()
 
             frame_records: List[Frame] = []
@@ -145,6 +148,35 @@ class VideoPipelineProcessor:
                 frame_records.append(frame_row)
 
             self.db.add_all(frame_records)
+
+            # Generate and persist temporal video-windows (Phase 5)
+            window_encoder = VideoWindowEncoder(dimension=embedding_provider.dimension)
+            temporal_windows = generate_sliding_windows(
+                duration_seconds=video.duration_seconds or 0.0,
+                window_duration=4.0,
+                stride=2.0
+            )
+
+            window_records: List[VideoWindow] = []
+            for tw in temporal_windows:
+                # Find frames in window
+                w_frames = [
+                    f for f in frame_records
+                    if tw.start_seconds <= f.timestamp_seconds <= tw.end_seconds
+                ]
+                w_vec = window_encoder.encode_window(w_frames)
+                window_row = VideoWindow(
+                    id=str(uuid.uuid4()),
+                    video_id=video.id,
+                    start_seconds=tw.start_seconds,
+                    end_seconds=tw.end_seconds,
+                    embedding=w_vec,
+                    model_id=window_encoder.model_id
+                )
+                window_records.append(window_row)
+
+            if window_records:
+                self.db.add_all(window_records)
 
             # 5. Finalize READY
             video.status = "READY"

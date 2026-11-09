@@ -8,6 +8,7 @@ class SearchRequest(BaseModel):
     limit: int = Field(10, ge=1, le=100, description="Maximum number of candidate intervals to return")
     threshold: Optional[float] = Field(None, ge=-1.0, le=1.0, description="Optional minimum cosine similarity score")
     include_evidence: bool = Field(True, description="Whether to include supporting evidence frames in results")
+    search_mode: str = Field("frame_semantic_v1", description="Retrieval mode: frame_semantic_v1, video_window_v1, or hybrid_v1")
 
 
 class EvidenceItem(BaseModel):

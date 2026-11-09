@@ -61,6 +61,7 @@ class Video(Base):
     # Relationships
     jobs = relationship("ProcessingJob", back_populates="video", cascade="all, delete-orphan", order_by="ProcessingJob.created_at.desc()")
     frames = relationship("Frame", back_populates="video", cascade="all, delete-orphan")
+    windows = relationship("VideoWindow", back_populates="video", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_videos_owner_status", "owner_id", "status"),
@@ -110,4 +111,23 @@ class Frame(Base):
     __table_args__ = (
         UniqueConstraint("video_id", "timestamp_seconds", "preprocessing_version", name="uq_frame_video_ts_version"),
         Index("idx_frames_video_timestamp", "video_id", "timestamp_seconds"),
+    )
+
+
+class VideoWindow(Base):
+    __tablename__ = "video_windows"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    video_id = Column(String(36), ForeignKey("videos.id", ondelete="CASCADE"), nullable=False, index=True)
+    start_seconds = Column(Float, nullable=False, index=True)
+    end_seconds = Column(Float, nullable=False, index=True)
+    embedding = Column(JSON, nullable=True)
+    model_id = Column(String(128), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+    video = relationship("Video", back_populates="windows")
+
+    __table_args__ = (
+        UniqueConstraint("video_id", "start_seconds", "end_seconds", "model_id", name="uq_window_video_interval_model"),
+        Index("idx_windows_video_interval", "video_id", "start_seconds", "end_seconds"),
     )
