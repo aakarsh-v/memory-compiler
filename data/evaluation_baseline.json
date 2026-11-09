@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "embedding_provider": "mock",
+    "model_id": "mock-clip-vit-b32",
+    "frame_sample_seconds": 2.0,
+    "vector_dimension": 512,
+    "indexing_time_sec": 0.35,
+    "queries_evaluated": 4
+  },
+  "metrics": {
+    "recall@1": 1.0,
+    "recall@3": 1.0,
+    "recall@5": 1.0,
+    "mean_tiou": 0.6,
+    "mean_latency_ms": 5.48
+  },
+  "queries": [
+    {
+      "query": "test pattern with crosshairs and colors",
+      "type": "object_scene",
+      "expected_match": true,
+      "results_count": 1,
+      "matched_rank": 1,
+      "best_tiou": 0.8,
+      "latency_ms": 8.38
+    },
+    {
+      "query": "colorful visual bars and tone calibration",
+      "type": "attribute",
+      "expected_match": true,
+      "results_count": 1,
+      "matched_rank": 1,
+      "best_tiou": 0.4,
+      "latency_ms": 4.03
+    },
+    {
+      "query": "rapid flashing animation test sequence",
+      "type": "single_action",
+      "expected_match": true,
+      "results_count": 1,
+      "matched_rank": 1,
+      "best_tiou": 0.6,
+      "latency_ms": 3.88
+    },
+    {
+      "query": "astronaut walking on lunar surface with rover",
+      "type": "hard_negative",
+      "expected_match": false,
+      "results_count": 1,
+      "matched_rank": null,
+      "best_tiou": 0.0,
+      "latency_ms": 5.65
+    }
+  ]
+}
