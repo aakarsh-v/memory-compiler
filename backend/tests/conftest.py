@@ -11,3 +11,4 @@ os.environ["ENABLE_ASYNC_WORKER"] = "False"
 # Reload settings to reflect mock provider for test suite
 from app.core import config
 config.settings = config.Settings(_env_file=None)
+
