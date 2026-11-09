@@ -38,5 +38,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Data & Media
+*.db
+backend/data/
+data/*.db
 data/media/*
 !data/media/.gitkeep

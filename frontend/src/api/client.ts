@@ -26,6 +26,7 @@ export class ApiClient {
 
   private getHeaders(extraHeaders: Record<string, string> = {}): HeadersInit {
     return {
+      'X-User-ID': this.ownerId,
       'X-Owner-ID': this.ownerId,
       ...extraHeaders,
     };
@@ -54,7 +55,13 @@ export class ApiClient {
     const res = await fetch(`${API_BASE}/videos?${params.toString()}`, {
       headers: this.getHeaders(),
     });
-    return this.handleResponse<VideoListResponse>(res);
+    const data = await this.handleResponse<{ items: Video[]; cursor: string | null }>(res);
+    return {
+      items: data.items,
+      videos: data.items,
+      cursor: data.cursor,
+      total: data.items?.length || 0,
+    };
   }
 
   async getVideo(videoId: string): Promise<Video> {

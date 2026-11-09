@@ -4,6 +4,9 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
 class Settings(BaseSettings):
     APP_ENV: str = "development"
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/memory_compiler"
@@ -26,6 +29,13 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @field_validator("MEDIA_ROOT", mode="after")
+    @classmethod
+    def resolve_media_root(cls, v: Path) -> Path:
+        if not v.is_absolute():
+            return (PROJECT_ROOT / v).resolve()
+        return v
 
     @field_validator("ALLOWED_VIDEO_EXTENSIONS", mode="before")
     @classmethod

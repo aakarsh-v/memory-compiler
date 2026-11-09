@@ -32,7 +32,7 @@ DEMO_VIDEOS = [
 ]
 
 
-def seed_demo(owner_id: str = "demo-user") -> None:
+def seed_demo(owner_id: str = "default_user") -> None:
     print(f"[*] Seeding demo data for owner: {owner_id}")
     init_db()
 

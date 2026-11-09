@@ -27,10 +27,11 @@ export interface Video {
 }
 
 export interface VideoListResponse {
-  videos: Video[];
-  total: number;
+  items: Video[];
+  videos?: Video[];
+  total?: number;
   cursor: string | null;
-  has_more: boolean;
+  has_more?: boolean;
 }
 
 export interface UploadResponse {

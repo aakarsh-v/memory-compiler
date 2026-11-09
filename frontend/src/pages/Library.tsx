@@ -27,7 +27,7 @@ export const Library: React.FC<LibraryProps> = ({
     try {
       setError(null);
       const res = await api.listVideos();
-      setVideos(res.videos);
+      setVideos(res.items || res.videos || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
     } finally {

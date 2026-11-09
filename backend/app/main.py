@@ -1,5 +1,6 @@
 import uuid
 import time
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -14,10 +15,23 @@ from app.api.v1.frames import router as frames_router
 
 setup_logging(settings.LOG_LEVEL)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        from app.db.session import init_db
+        init_db()
+        logger.info("Database tables initialized successfully.")
+    except Exception as e:
+        logger.warning(f"Database initialization warning: {e}")
+    yield
+
+
 app = FastAPI(
     title="Memory Compiler API",
     description="Multimodal deep-learning system for natural-language search across video archives",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # CORS
