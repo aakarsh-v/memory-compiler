@@ -10,3 +10,4 @@ def get_current_user_id(x_user_id: Optional[str] = Header(None, alias="X-User-ID
     if x_user_id and x_user_id.strip():
         return x_user_id.strip()
     return "dev-user"
+

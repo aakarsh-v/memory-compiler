@@ -34,3 +34,4 @@ def readiness(response: Response) -> Dict[str, Any]:
         return {"status": "unhealthy", "checks": checks}
 
     return {"status": "ready", "checks": checks}
+

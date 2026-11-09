@@ -74,3 +74,4 @@ class LocalStorageService(StorageService):
             return dest_path.exists()
         except ValidationException:
             return False
+

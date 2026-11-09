@@ -44,3 +44,4 @@ def test_storage_delete(tmp_path: Path):
     assert storage.exists(key) is True
     assert storage.delete_file(key) is True
     assert storage.exists(key) is False
+

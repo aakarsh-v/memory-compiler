@@ -17,3 +17,4 @@ def test_health_ready():
     data = response.json()
     assert data["status"] == "ready"
     assert data["checks"]["storage"] is True
+

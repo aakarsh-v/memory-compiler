@@ -71,3 +71,4 @@ class MockEmbeddingProvider(EmbeddingProvider):
                 seed = str(source).encode("utf-8")
             results.append(self._generate_vector(seed))
         return results
+

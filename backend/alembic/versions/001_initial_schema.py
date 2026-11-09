@@ -76,3 +76,4 @@ def downgrade() -> None:
     op.drop_table("frames")
     op.drop_table("processing_jobs")
     op.drop_table("videos")
+

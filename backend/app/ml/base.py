@@ -27,3 +27,4 @@ class EmbeddingProvider(ABC):
     def embed_frames(self, frame_sources: List[Union[str, Path, bytes]]) -> List[List[float]]:
         """Embed a batch of frame image paths or raw bytes into normalized vectors."""
         pass
+

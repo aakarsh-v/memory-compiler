@@ -31,3 +31,4 @@ def test_mock_frame_embedding():
     assert len(frame_vec) == 128
     norm = math.sqrt(sum(x * x for x in frame_vec))
     assert abs(norm - 1.0) < 1e-5
+

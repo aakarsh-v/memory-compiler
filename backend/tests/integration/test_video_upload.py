@@ -141,3 +141,4 @@ def test_ownership_isolation(test_env):
 
     bob_query_alice_status = client.get(f"/api/v1/videos/{alice_video_id}/status", headers={"X-User-ID": "bob"})
     assert bob_query_alice_status.status_code == 404
+

@@ -14,3 +14,4 @@ def test_settings_defaults():
 def test_settings_custom_extensions():
     s = Settings(ALLOWED_VIDEO_EXTENSIONS=".mp4, .mkv, .avi ")
     assert s.ALLOWED_VIDEO_EXTENSIONS == [".mp4", ".mkv", ".avi"]
+

@@ -12,3 +12,4 @@ def get_embedding_provider() -> EmbeddingProvider:
             dimension=settings.VECTOR_DIMENSION
         )
     raise ValueError(f"Unsupported EMBEDDING_PROVIDER: '{provider}'. Only 'mock' is currently supported without GPU/heavy weights.")
+
