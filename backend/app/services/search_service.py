@@ -82,8 +82,30 @@ class SearchService:
         else:
             return self._search_frames(request, owner_id, query_text)
 
+    def _embed_query(self, query_text: str) -> List[float]:
+        """
+        Embeds query text. For short or single-word queries (<= 3 words), applies
+        standard CLIP prompt ensembling (e.g. 'a photo of {q}', 'a video frame showing {q}')
+        to calibrate out-of-distribution word embeddings and reduce synthetic noise.
+        """
+        words = query_text.strip().split()
+        if len(words) <= 3:
+            templates = [
+                f"a video frame showing {query_text}",
+                f"a photo of {query_text}",
+                f"a scene depicting {query_text}",
+                query_text
+            ]
+            vecs = self.embedding_provider.embed_texts(templates)
+            dim = len(vecs[0])
+            mean_vec = [sum(v[i] for v in vecs) / len(vecs) for i in range(dim)]
+            norm = math.sqrt(sum(x * x for x in mean_vec))
+            if norm > 0:
+                return [x / norm for x in mean_vec]
+        return self.embedding_provider.embed_texts([query_text])[0]
+
     def _search_frames(self, request: SearchRequest, owner_id: str, query_text: str) -> SearchResponse:
-        query_vector = self.embedding_provider.embed_texts([query_text])[0]
+        query_vector = self._embed_query(query_text)
 
         # 2. Query candidates restricted to owned and READY videos
         db_query = (
@@ -200,7 +222,7 @@ class SearchService:
         )
 
     def _search_video_windows(self, request: SearchRequest, owner_id: str, query_text: str) -> SearchResponse:
-        query_vector = self.embedding_provider.embed_texts([query_text])[0]
+        query_vector = self._embed_query(query_text)
 
         db_query = (
             self.db.query(VideoWindow, Video)
