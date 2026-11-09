@@ -1,1 +1,81 @@
-# TODO: Service definitions for PostgreSQL (pgvector), Redis, Backend, Worker, Frontend
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: memory_compiler_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-memory_compiler}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: memory_compiler_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: memory_compiler_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/memory_compiler
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /data/media
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/media:/data/media
+      - ./backend:/app
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: memory_compiler_worker
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/memory_compiler
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /data/media
+    volumes:
+      - ./data/media:/data/media
+      - ./backend:/app
+
+volumes:
+  pgdata:
+  redisdata:
