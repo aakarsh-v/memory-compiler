@@ -1,9 +1,11 @@
 import uuid
+import threading
 from pathlib import Path
 from typing import BinaryIO, Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.logging import logger
 from app.core.errors import ValidationException, PayloadTooLargeException
 from app.db.models import Video, ProcessingJob
 from app.storage.local import LocalStorageService
@@ -80,20 +82,46 @@ class JobService:
         self.db.commit()
         self.db.refresh(video)
 
-        # Attempt to enqueue async Celery worker task if explicitly enabled
         if settings.ENABLE_ASYNC_WORKER:
+            # Dispatch to Celery broker (requires Redis + running worker)
             try:
                 from app.workers.tasks import process_video_task
                 process_video_task.delay(video.id)
-            except Exception:
-                pass
-
-        # Attempt to enqueue async Celery worker task if explicitly enabled
-        if settings.ENABLE_ASYNC_WORKER:
-            try:
-                from app.workers.tasks import process_video_task
-                process_video_task.delay(video.id)
-            except Exception:
-                pass
+                logger.info(f"Enqueued Celery task for video {video.id}")
+            except Exception as exc:
+                logger.warning(f"Failed to enqueue Celery task for video {video.id}: {exc}")
+        else:
+            # Dev mode: run pipeline in a background thread (no Redis/Celery required)
+            video_id = video.id
+            logger.info(f"ENABLE_ASYNC_WORKER=False — running pipeline in background thread for video {video_id}")
+            thread = threading.Thread(
+                target=_run_pipeline_in_thread,
+                args=(video_id,),
+                daemon=True,
+                name=f"pipeline-{video_id[:8]}"
+            )
+            thread.start()
 
         return video
+
+
+def _run_pipeline_in_thread(video_id: str) -> None:
+    """
+    Runs the full video processing pipeline synchronously in a background daemon thread.
+    Used in development mode (ENABLE_ASYNC_WORKER=False) as a lightweight alternative
+    to a Celery worker. Creates its own DB session and storage service to stay thread-safe.
+    """
+    from app.db.session import SessionLocal
+    from app.pipeline.processor import VideoPipelineProcessor
+
+    db = SessionLocal()
+    storage = LocalStorageService(settings.MEDIA_ROOT)
+    try:
+        logger.info(f"Background thread: starting pipeline for video {video_id}")
+        processor = VideoPipelineProcessor(db, storage)
+        processor.process_video(video_id)
+        logger.info(f"Background thread: pipeline completed for video {video_id}")
+    except Exception as exc:
+        logger.exception(f"Background thread: unhandled error for video {video_id}: {exc}")
+    finally:
+        db.close()
