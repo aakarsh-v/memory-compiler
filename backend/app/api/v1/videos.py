@@ -192,3 +192,34 @@ def stream_video(
         status_code=status.HTTP_206_PARTIAL_CONTENT,
         headers=headers
     )
+
+
+@router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_video(
+    video_id: str,
+    db: Session = Depends(get_db),
+    storage: LocalStorageService = Depends(get_storage_service),
+    owner_id: str = Depends(get_current_user_id)
+) -> Response:
+    """
+    Deletes video, cascading to all jobs, frames, windows, events,
+    and purging original media and frame thumbnails from storage without leaving orphans.
+    """
+    video = db.query(Video).filter(Video.id == video_id, Video.owner_id == owner_id).first()
+    if not video:
+        raise NotFoundException("VIDEO_NOT_FOUND", f"Video '{video_id}' not found or access denied")
+
+    # Collect storage keys before deletion
+    frame_keys = [f.image_key for f in video.frames]
+    video_key = video.storage_key
+
+    # Delete video row (cascades to all child tables)
+    db.delete(video)
+    db.commit()
+
+    # Clean storage assets
+    storage.delete_file(video_key)
+    for f_key in frame_keys:
+        storage.delete_file(f_key)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

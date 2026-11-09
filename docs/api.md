@@ -109,6 +109,13 @@ No stack traces, internal paths, or secrets are exposed in API responses.
 - Header: `X-User-ID: <owner_id>`
 - Response: `200 OK` (returns full metadata)
 
+### 7. Delete Video & Derived Assets
+`DELETE /api/v1/videos/{video_id}`
+- Header: `X-User-ID: <owner_id>`
+- Response: `204 No Content`
+- Cascades deletion to processing jobs, extracted frames, temporal windows, and events.
+- Safely purges original video and all frame JPEG thumbnails from private storage without leaving orphan records or files.
+
 ### 7. Natural-Language Semantic Search
 `POST /api/v1/search`
 - Header: `X-User-ID: <owner_id>`

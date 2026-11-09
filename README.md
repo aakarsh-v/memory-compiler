@@ -11,6 +11,7 @@ Memory Compiler is a private video archive with natural-language retrieval. User
 - **Phase 4 (Labeled Evaluation Benchmark & Retrieval Metrics):** Complete
 - **Phase 5 (Temporal Video-Window Retrieval & Comparative Evaluation):** Complete
 - **Phase 6 (Event Reasoning & Constrained Temporal Query Engine):** Complete
+- **Phase 7 (Hardening, Cascading Deletion & Demo Seeding):** Complete
 
 ## Technology Stack
 
@@ -78,7 +79,19 @@ cd backend
 python -m pytest tests/ -v
 ```
 
-### 5. Start Backend API
+### 5. Seed Demo Data (Optional)
+Generate synthetic sample clips and index them into storage and DB:
+```bash
+python scripts/seed_demo_data.py
+```
+
+### 6. Run Retrieval Evaluation Benchmark
+Measure Recall@K, temporal IoU, and search latency:
+```bash
+python scripts/evaluate_retrieval.py
+```
+
+### 7. Start Backend API
 ```bash
 cd backend
 uvicorn app.main:app --reload --port 8000
@@ -105,3 +118,4 @@ docker compose up -d
 | `POST` | `/api/v1/search` | Natural-language top-K semantic search | `200 OK` |
 | `GET` | `/api/v1/videos/{id}/stream` | Range-seeking private video streaming | `200 OK` / `206 Partial Content` |
 | `GET` | `/api/v1/frames/{id}/thumbnail` | Frame thumbnail preview image | `200 OK` (`image/jpeg`) |
+| `DELETE` | `/api/v1/videos/{id}` | Cascading purge of video, frames, windows & files | `204 No Content` |
