@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.core.errors import ValidationException
 from app.db.models import Video, Frame, VideoWindow
 from app.ml.base import EmbeddingProvider
+from app.services.temporal_parser import TemporalQueryParser, ParsedQuery
+from app.services.constraint_evaluator import TemporalConstraintEvaluator
 from app.schemas.search import (
     SearchRequest,
     SearchResponse,
@@ -30,12 +32,48 @@ class SearchService:
     def __init__(self, db: Session, embedding_provider: EmbeddingProvider):
         self.db = db
         self.embedding_provider = embedding_provider
+        self.parser = TemporalQueryParser()
+        self.evaluator = TemporalConstraintEvaluator()
 
     def search(self, request: SearchRequest, owner_id: str) -> SearchResponse:
         query_text = request.query.strip()
         if not query_text:
             raise ValidationException("SEARCH_EMPTY_QUERY", "Search query cannot be empty")
 
+        # 1. Parse query for temporal constraints (Phase 6)
+        parsed_query = self.parser.parse(query_text)
+
+        if parsed_query.has_constraints:
+            # Multi-event or extremum temporal evaluation
+            event_candidates = {}
+            for ev in parsed_query.events:
+                sub_req = SearchRequest(
+                    query=ev.query,
+                    video_ids=request.video_ids,
+                    limit=request.limit,
+                    threshold=request.threshold,
+                    search_mode=request.search_mode
+                )
+                sub_resp = self._dispatch_mode(sub_req, owner_id, ev.query)
+                event_candidates[ev.id] = sub_resp.results
+
+            constrained_results = self.evaluator.evaluate_constraints(parsed_query, event_candidates)
+            if constrained_results:
+                return SearchResponse(
+                    query=query_text,
+                    search_mode="temporal_constraint_v1",
+                    results=constrained_results[: request.limit]
+                )
+            # If constraint evaluation produced 0 pairs (e.g. order reversal or missing event),
+            # fall back gracefully to plain semantic retrieval and flag constraints were not applied.
+
+        # 2. Standard single-event retrieval (or graceful fallback)
+        resp = self._dispatch_mode(request, owner_id, query_text)
+        for r in resp.results:
+            r.applied_constraints = []  # Explicitly flag that constraints were not applied
+        return resp
+
+    def _dispatch_mode(self, request: SearchRequest, owner_id: str, query_text: str) -> SearchResponse:
         mode = request.search_mode.lower()
         if mode == "video_window_v1":
             return self._search_video_windows(request, owner_id, query_text)
