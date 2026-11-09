@@ -145,3 +145,4 @@ export const ResultCard: React.FC<ResultCardProps> = ({
     </div>
   );
 };
+

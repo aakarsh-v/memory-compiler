@@ -208,3 +208,4 @@ export const SearchPage: React.FC<SearchPageProps> = ({
     </div>
   );
 };
+

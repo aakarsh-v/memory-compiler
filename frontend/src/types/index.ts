@@ -72,3 +72,4 @@ export interface ApiErrorDetail {
 export interface ApiErrorResponse {
   error: ApiErrorDetail;
 }
+

@@ -41,3 +41,4 @@ export function formatDate(isoString: string): string {
 export function formatScore(score: number): string {
   return score.toFixed(3);
 }
+
