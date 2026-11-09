@@ -11,6 +11,8 @@ class VideoUploadResponse(BaseModel):
 
 class VideoStatusResponse(BaseModel):
     video_id: str
+    id: Optional[str] = None
+    filename: Optional[str] = None
     status: str = Field(..., description="Current status: UPLOADED, QUEUED, PROBING, EXTRACTING_FRAMES, EMBEDDING_FRAMES, PERSISTING_INDEX, READY, FAILED")
     current_stage: Optional[str] = Field(None, description="Detailed stage currently executing")
     progress: float = Field(0.0, ge=0.0, le=1.0, description="Honest progress estimate between 0.0 and 1.0")
@@ -25,6 +27,8 @@ class VideoStatusResponse(BaseModel):
     def from_video(cls, video) -> "VideoStatusResponse":
         return cls(
             video_id=video.id,
+            id=video.id,
+            filename=video.filename,
             status=video.status,
             current_stage=video.current_stage,
             progress=video.progress,

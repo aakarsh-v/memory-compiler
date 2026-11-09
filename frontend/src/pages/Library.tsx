@@ -148,9 +148,12 @@ export const Library: React.FC<LibraryProps> = ({
       ) : (
         <div className="video-grid">
           {videos.map((video) => {
-            const isReady = video.status === 'ready';
-            const isFailed = video.status === 'failed';
+            const statusLower = (video.status || '').toLowerCase();
+            const isReady = statusLower === 'ready';
+            const isFailed = statusLower === 'failed';
             const isProcessing = !isReady && !isFailed;
+            const progressVal = video.progress ?? 0;
+            const progressPct = progressVal <= 1.0 ? Math.round(progressVal * 100) : Math.round(progressVal);
 
             return (
               <div key={video.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -176,7 +179,7 @@ export const Library: React.FC<LibraryProps> = ({
                     >
                       {video.filename}
                     </h4>
-                    <span className={`badge badge-${video.status}`}>
+                    <span className={`badge badge-${statusLower}`}>
                       {video.status}
                     </span>
                   </div>
@@ -200,12 +203,12 @@ export const Library: React.FC<LibraryProps> = ({
                           <Clock size={12} />
                           {video.current_stage || 'Processing'}
                         </span>
-                        <span>{video.progress}%</span>
+                        <span>{progressPct}%</span>
                       </div>
                       <div className="progress-bar-container">
                         <div
                           className="progress-bar-fill"
-                          style={{ width: `${Math.max(5, video.progress)}%` }}
+                          style={{ width: `${Math.max(5, progressPct)}%` }}
                         />
                       </div>
                     </div>

@@ -75,7 +75,12 @@ export class ApiClient {
     const res = await fetch(`${API_BASE}/videos/${encodeURIComponent(videoId)}/status`, {
       headers: this.getHeaders(),
     });
-    return this.handleResponse<Video>(res);
+    const data = await this.handleResponse<any>(res);
+    return {
+      ...data,
+      id: data.id || data.video_id || videoId,
+      status: (data.status || 'queued').toLowerCase(),
+    };
   }
 
   async uploadVideo(file: File): Promise<UploadResponse> {
@@ -122,6 +127,7 @@ export class ApiClient {
         query,
         search_mode: mode,
         limit,
+        threshold: minSimilarity,
         min_similarity: minSimilarity,
       }),
     });

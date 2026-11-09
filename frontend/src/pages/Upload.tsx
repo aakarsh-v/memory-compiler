@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, CheckCircle, AlertCircle, FileVideo, Clock, ArrowRight } from 'lucide-react';
 import { api } from '../api/client';
-import { Video, VideoStatus } from '../types';
+import { Video } from '../types';
 import { formatBytes } from '../utils/formatters';
 
 interface UploadProps {
@@ -73,7 +73,10 @@ export const Upload: React.FC<UploadProps> = ({
       const res = await api.uploadVideo(selectedFile);
       // Fetch initial status
       const statusRes = await api.getVideoStatus(res.video_id);
-      setActiveJobVideo(statusRes);
+      setActiveJobVideo({
+        ...statusRes,
+        filename: selectedFile.name,
+      });
       onUploadSuccess(res.video_id);
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -85,16 +88,23 @@ export const Upload: React.FC<UploadProps> = ({
   // Poll active video status until READY or FAILED
   useEffect(() => {
     if (!activeJobVideo) return;
-    if (activeJobVideo.status === 'ready' || activeJobVideo.status === 'failed') return;
+    const statusLower = (activeJobVideo.status || '').toLowerCase();
+    if (statusLower === 'ready' || statusLower === 'failed') return;
 
     pollTimerRef.current = window.setTimeout(async () => {
       try {
-        const updated = await api.getVideoStatus(activeJobVideo.id);
-        setActiveJobVideo(updated);
+        const vidId = activeJobVideo.id || (activeJobVideo as any).video_id;
+        if (!vidId) return;
+        const updated = await api.getVideoStatus(vidId);
+        setActiveJobVideo((prev) => ({
+          ...prev,
+          ...updated,
+          filename: prev?.filename || updated.filename || 'Uploaded Video',
+        }));
       } catch {
         // Retry next cycle
       }
-    }, 2000);
+    }, 1500);
 
     return () => {
       if (pollTimerRef.current) {
@@ -103,8 +113,9 @@ export const Upload: React.FC<UploadProps> = ({
     };
   }, [activeJobVideo]);
 
-  const getStageIndex = (status: VideoStatus): number => {
-    return STAGES.findIndex((s) => s.key === status);
+  const getStageIndex = (status: string): number => {
+    const lower = (status || '').toLowerCase();
+    return STAGES.findIndex((s) => s.key === lower);
   };
 
   return (
@@ -203,140 +214,148 @@ export const Upload: React.FC<UploadProps> = ({
             </div>
           )}
         </div>
-      ) : (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <FileVideo size={24} color="var(--accent-blue)" />
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 600 }}>{activeJobVideo.filename}</h4>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  ID: {activeJobVideo.id}
-                </span>
+      ) : (() => {
+        const statusLower = (activeJobVideo.status || '').toLowerCase();
+        const isReady = statusLower === 'ready';
+        const isFailed = statusLower === 'failed';
+        const progressVal = activeJobVideo.progress ?? 0;
+        const progressPct = progressVal <= 1.0 ? Math.round(progressVal * 100) : Math.round(progressVal);
+        const currentIdx = getStageIndex(activeJobVideo.status);
+
+        return (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <FileVideo size={24} color="var(--accent-blue)" />
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600 }}>{activeJobVideo.filename || 'Uploaded Video'}</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    ID: {activeJobVideo.id}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <span className={`badge badge-${activeJobVideo.status}`}>
-              {activeJobVideo.status}
-            </span>
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                {activeJobVideo.current_stage || 'Processing pipeline'}
+              <span className={`badge badge-${statusLower}`}>
+                {activeJobVideo.status}
               </span>
-              <span style={{ fontWeight: 600 }}>{activeJobVideo.progress}%</span>
             </div>
 
-            <div className="progress-bar-container" style={{ height: '8px' }}>
-              <div
-                className="progress-bar-fill"
-                style={{ width: `${Math.max(5, activeJobVideo.progress)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Stepper details */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            {STAGES.map((stage, idx) => {
-              const currentIdx = getStageIndex(activeJobVideo.status);
-              const isPast = currentIdx > idx || activeJobVideo.status === 'ready';
-              const isCurrent = currentIdx === idx && activeJobVideo.status !== 'ready';
-
-              return (
-                <div
-                  key={stage.key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    color: isPast ? '#34d399' : isCurrent ? '#fbbf24' : 'var(--text-muted)',
-                    fontSize: '0.85rem',
-                  }}
-                >
-                  {isPast ? (
-                    <CheckCircle size={16} />
-                  ) : isCurrent ? (
-                    <Clock size={16} className="spin" />
-                  ) : (
-                    <div
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        border: '2px solid var(--text-muted)',
-                      }}
-                    />
-                  )}
-                  <span>{stage.label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {activeJobVideo.status === 'ready' && (
-            <div
-              style={{
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                marginBottom: '1rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, color: '#34d399', fontSize: '0.9rem' }}>
-                  Ingestion & Embedding Complete
-                </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  This video is indexed and immediately queryable via semantic search.
-                </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {activeJobVideo.current_stage || (isReady ? 'COMPLETED' : 'Processing pipeline')}
+                </span>
+                <span style={{ fontWeight: 600 }}>{progressPct}%</span>
               </div>
 
+              <div className="progress-bar-container" style={{ height: '8px' }}>
+                <div
+                  className="progress-bar-fill"
+                  style={{ width: `${Math.max(5, progressPct)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Stepper details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {STAGES.map((stage, idx) => {
+                const isPast = currentIdx > idx || isReady;
+                const isCurrent = currentIdx === idx && !isReady;
+
+                return (
+                  <div
+                    key={stage.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      color: isPast ? '#34d399' : isCurrent ? '#fbbf24' : 'var(--text-muted)',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    {isPast ? (
+                      <CheckCircle size={16} />
+                    ) : isCurrent ? (
+                      <Clock size={16} className="spin" />
+                    ) : (
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          border: '2px solid var(--text-muted)',
+                        }}
+                      />
+                    )}
+                    <span>{stage.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {isReady && (
+              <div
+                style={{
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  padding: '1rem',
+                  borderRadius: '0.5rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, color: '#34d399', fontSize: '0.9rem' }}>
+                    Ingestion & Embedding Complete
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    This video is indexed and immediately queryable via semantic search.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => onNavigateToSearch(activeJobVideo.id)}
+                >
+                  <span>Search Video</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+            )}
+
+            {isFailed && (
+              <div
+                style={{
+                  background: 'rgba(244, 63, 94, 0.1)',
+                  border: '1px solid rgba(244, 63, 94, 0.3)',
+                  padding: '1rem',
+                  borderRadius: '0.5rem',
+                  marginBottom: '1rem',
+                  color: '#fb7185',
+                }}
+              >
+                <strong>Processing Failed ({activeJobVideo.error_code}):</strong> {activeJobVideo.error_message}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
                 type="button"
-                className="btn btn-primary"
-                onClick={() => onNavigateToSearch(activeJobVideo.id)}
+                className="btn btn-secondary"
+                onClick={() => {
+                  setActiveJobVideo(null);
+                  setSelectedFile(null);
+                }}
               >
-                <span>Search Video</span>
-                <ArrowRight size={15} />
+                Upload Another Video
               </button>
             </div>
-          )}
-
-          {activeJobVideo.status === 'failed' && (
-            <div
-              style={{
-                background: 'rgba(244, 63, 94, 0.1)',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                marginBottom: '1rem',
-                color: '#fb7185',
-              }}
-            >
-              <strong>Processing Failed ({activeJobVideo.error_code}):</strong> {activeJobVideo.error_message}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                setActiveJobVideo(null);
-                setSelectedFile(null);
-              }}
-            >
-              Upload Another Video
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

@@ -2,7 +2,7 @@ from app.core.config import Settings
 
 
 def test_settings_defaults():
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.APP_ENV == "development"
     assert s.MAX_UPLOAD_MB == 500
     assert s.max_upload_bytes == 500 * 1024 * 1024
