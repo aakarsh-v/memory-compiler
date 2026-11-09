@@ -172,3 +172,4 @@ class VideoPipelineProcessor:
                 extra={"video_id": video_id, "job_id": job.id, "error_code": "PROCESSING_UNHANDLED_ERROR"}
             )
             return video
+

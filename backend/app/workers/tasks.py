@@ -26,3 +26,4 @@ def process_video_task(self, video_id: str):
     except Exception as exc:
         logger.exception(f"Celery task failed for video {video_id}: {str(exc)}")
         raise self.retry(exc=exc, countdown=5)
+

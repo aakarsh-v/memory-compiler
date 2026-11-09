@@ -24,3 +24,4 @@ def create_synthetic_video(output_path: Path, duration_seconds: int = 5, width: 
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return output_path
+

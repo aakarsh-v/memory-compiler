@@ -131,3 +131,4 @@ def test_process_corrupt_video_failure(env, tmp_path: Path):
     # Verify no frames were persisted
     frames = db.query(Frame).filter(Frame.video_id == video_id).all()
     assert len(frames) == 0
+

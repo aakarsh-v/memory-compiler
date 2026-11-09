@@ -30,3 +30,4 @@ def test_extract_frames_monotonic_timestamps(sample_video: Path):
         assert frame.image_path.exists()
         assert frame.width == 320
         assert frame.height == 240
+

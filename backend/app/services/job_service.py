@@ -88,4 +88,12 @@ class JobService:
             except Exception:
                 pass
 
+        # Attempt to enqueue async Celery worker task if explicitly enabled
+        if settings.ENABLE_ASYNC_WORKER:
+            try:
+                from app.workers.tasks import process_video_task
+                process_video_task.delay(video.id)
+            except Exception:
+                pass
+
         return video

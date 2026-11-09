@@ -33,3 +33,4 @@ def test_probe_corrupt_file(tmp_path: Path):
     with pytest.raises(MediaProbeException) as exc:
         probe_video(corrupt_file)
     assert exc.value.code == "MEDIA_CORRUPT"
+
